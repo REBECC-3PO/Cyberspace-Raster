@@ -26,12 +26,20 @@ def bayer_matrix(n: int) -> np.ndarray:
 # Named color palettes: (background_color, foreground_color)
 PALETTES = {
     "vt320": ((23, 8, 0), (255, 154, 16)),
-    "paper": ((255, 244, 210), (0, 0, 0)),
     "matrix": ((0, 0, 0), (140, 255, 140)),
-    "amber": ((0, 0, 0), (255, 152, 56)),  
-    "green_phosphor": ((0, 0, 0), (0, 255, 128)),
+    "paper": ((255, 244, 210), (0, 0, 0)),
+    "amber": ((0, 0, 0), (255, 152, 56)),
     "c64": ((0, 0, 170), (255, 255, 85)),
+    "green_phosphor": ((0, 0, 0), (0, 255, 128)),
+    # NEW:
+    "dmg": (
+        (0x1b, 0x2a, 0x09),  # darkest
+        (0x0e, 0x45, 0x0b),
+        (0x49, 0x6b, 0x22),
+        (0x9a, 0x9e, 0x3f),  # lightest
+    ),
 }
+
 
 
 
@@ -82,13 +90,44 @@ def rasterize(input_path: str,
 
     # --- apply palette to build RGB image ---
 
-    bg, fg = PALETTES[palette_name]
-    out = np.zeros((h, w, 3), dtype=np.uint8)
-    out[~mask] = bg
-    out[mask] = fg
+       # --- map to palette colors ---
 
+    colors = PALETTES[palette_name]
+
+    # 2-color case (what you already had)
+    if len(colors) == 2:
+        bg, fg = colors
+        rgb = np.zeros((h, w, 3), dtype=np.uint8)
+
+        # binary dither mask
+        mask = gray_scaled >= tiled
+        mask[shadows] = False  # deep shadows forced to background
+
+        rgb[mask] = fg
+        rgb[~mask] = bg
+
+    else:
+        # N-color ordered dither (for DMG etc.)
+        L = len(colors)
+
+        # normalize gray into [0, 1) to avoid hitting L exactly
+        vals = np.clip(gray_scaled, 0.0, 0.9999)
+
+        # ordered-dithered level index 0..L-1
+        levels = np.floor(vals * L + tiled).astype(np.int32)
+        levels = np.clip(levels, 0, L - 1)
+
+        # deep shadows always use color 0 (darkest)
+        levels[shadows] = 0
+
+        rgb = np.zeros((h, w, 3), dtype=np.uint8)
+        for idx, color in enumerate(colors):
+            rgb[levels == idx] = color
+
+    out = rgb
     Image.fromarray(out, mode="RGB").save(output_path)
     print(f"Saved {output_path} ({w}x{h}, palette={palette_name})")
+
 
 # ---------- FOLDER BATCH PROCESSING ----------
 

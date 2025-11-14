@@ -4,6 +4,16 @@ from tkinter import filedialog, messagebox
 from pathlib import Path
 from rasterize import process_folder, PALETTES
 
+# --- default input/output folders next to this script ---
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+DEFAULT_INPUT_DIR = SCRIPT_DIR / "input"
+DEFAULT_OUTPUT_DIR = SCRIPT_DIR / "output"
+
+# make sure they exist
+DEFAULT_INPUT_DIR.mkdir(exist_ok=True)
+DEFAULT_OUTPUT_DIR.mkdir(exist_ok=True)
+
 # --- basic color theme (VT320-ish dark mode) ---
 BG      = "#0b0500"   # background
 PANEL   = "#170800"   # panels / entries
@@ -16,22 +26,28 @@ CLOSE_ICON_FONT = ("C64 Pro Mono", 20)   # or 20, or 24
 ABOUT_ICON_FONT = ("C64 Pro Mono", 16)   # or 20, or 24
 
 def browse_input():
-    folder = filedialog.askdirectory(title="Select input folder")
+    start_dir = input_var.get() or str(DEFAULT_INPUT_DIR)
+    folder = filedialog.askdirectory(title="Select input folder",
+                                     initialdir=start_dir)
     if folder:
         input_var.set(folder)
 
 def browse_output():
-    folder = filedialog.askdirectory(title="Select output folder")
+    start_dir = output_var.get() or str(DEFAULT_OUTPUT_DIR)
+    folder = filedialog.askdirectory(title="Select output folder",
+                                     initialdir=start_dir)
     if folder:
         output_var.set(folder)
+
 
 def show_about():
     messagebox.showinfo(
         "About Cyberspace Rasterizer",
         "Cyberspace Rasterizer\n"
         "v0.1\n\n"
-        "Offline image rasterizer inspired by Cyberspace.online\n"
-        "Dithers images into VT320-style palettes for use on your cyberdeck."
+        "Offline image rasterizer inspired by Cyberspace\n"
+        "Dithers images into VT320-style palettes for use on your cyberdeck\n"
+        "or where ever your heart pleases."
     )
 
 def run_rasterizer():
@@ -128,11 +144,12 @@ except Exception:
 # allow a little padding
 pad = {"padx": 8, "pady": 4}
 
-input_var   = tk.StringVar()
-output_var  = tk.StringVar()
-palette_var = tk.StringVar(value="vt320")
+input_var   = tk.StringVar(value=str(DEFAULT_INPUT_DIR))
+output_var  = tk.StringVar(value=str(DEFAULT_OUTPUT_DIR))
+palette_var = tk.StringVar(value="VT320")
 width_var   = tk.StringVar(value="330")
 status_var  = tk.StringVar(value="Status: Idle")
+
 
 logo_path = "cyberspace_logo.png"
 logo_img = None
